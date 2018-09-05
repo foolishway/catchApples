@@ -1,0 +1,279 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+  <title>catch apples</title>
+  <meta name="viewport" content="initial-scale=1 maximum-scale=1 user-scalable=0 minimal-ui" />
+  <script src="js/jquery-2.0.3.min.js" type="text/javascript"></script>
+  <script src="js/phaser.2.6.2.min.js" type="text/javascript"></script>
+  <style type="text/css">
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    .phaser-example {}
+  </style>
+</head>
+
+<body>
+  <div id="phaser-example">
+  </div>
+
+  <script type="text/javascript">
+    var screenHeight = window.innerHeight;
+    var screenWitdh = window.innerWidth;
+
+    var game = new Phaser.Game(screenWitdh, screenHeight, Phaser.AUTO, 'phaser-example', { preload: preload, create: create, update: update, render: render });
+
+    function preload() {
+      game.load.image('bg', 'demoAssets/images/bg.png');
+      game.load.image('dudes', 'demoAssets/images/dude.png');
+      game.load.image('green', 'demoAssets/images/green.png');
+      game.load.image('red', 'demoAssets/images/red.png');
+      game.load.image('yellow', 'demoAssets/images/yellow.png');
+      game.load.image('bomb', 'demoAssets/images/bomb.png');
+      game.load.image('one', 'demoAssets/images/one.png');
+      game.load.image('three', 'demoAssets/images/three.png');
+      game.load.image('five', 'demoAssets/images/five.png');
+      game.load.audio('musicBg', 'demoAssets/audio/bgMusic.mp3');
+      game.load.audio('addscore', 'demoAssets/audio/addscore.mp3');
+      game.load.audio('boom', 'demoAssets/audio/boom.mp3');
+    }
+    var sprites;
+    var sprite;
+    var appleArray = ['green', 'red', 'yellow', 'bomb'];
+    var bgMusic;
+    var dude;
+    var cursors;
+    var addscore;
+    var boom;
+    var showScore;
+    var gameOverText;
+    var gameOverTextGroup;
+    var timeOutId;
+    var curScore = 0;
+    var shadowGraphics;
+    var progress;
+    var loadingGround;
+    function create() {
+
+      //背景图
+      var bg = game.add.image(0, 0, 'bg');
+      bg.height = screenHeight;
+      bg.width = screenWitdh;
+
+
+      //背景音乐
+      bgMusic = game.add.audio('musicBg');
+      addscore = game.add.audio('addscore');
+      boom = game.add.audio('boom');
+      bgMusic.play();
+
+
+      sprites = game.add.group();
+      sprites.enableBody = true;
+      game.physics.enable(sprites, Phaser.Physics.ARCADE);
+
+
+      dude = game.add.sprite(screenWitdh / 2 - 20, screenHeight - 100, "dudes");
+      dude.scale.set(0.5, 0.5);
+      game.physics.enable(dude, Phaser.Physics.ARCADE);
+      dude.body.immovable = true;
+      //设置边界
+      dude.body.collideWorldBounds = true;
+
+      dude.inputEnabled = true;
+      dude.input.enableDrag();
+      dude.input.enableDrag(false, false, false, 255, new Phaser.Rectangle(0, screenHeight - 100, screenWitdh, dude.height));
+      dude.visible = false
+      // createSprites();
+
+      //得分
+      showScore = game.add.text(game.world.centerX, 100, "0", { font: "65px Arial", fill: "yellow", align: "center" });
+      showScore.visible = false
+
+
+      gameOverTextGroup = game.add.group();
+
+      var style = {
+        font: "60px Arial",
+        fill: "yellow",
+        wordWrapWidth: screenWitdh,
+        align: "center",
+        boundsAlignH: "center",
+        boundsAlignV: "middle"
+      };
+      gameOverText = game.add.text(0, 0, "接苹果", style);
+      gameOverText.setTextBounds(10, 100, screenWitdh, 100);
+      gameOverTextGroup.add(gameOverText);
+
+      gameOverText = game.add.text(0, 0, "点击屏幕开始", Object.assign(style, { font: "40px Arial" }));
+      gameOverText.setTextBounds(10, 200, screenWitdh, 100);
+      gameOverTextGroup.add(gameOverText);
+
+
+      shadowGraphics = game.add.graphics();
+      shadowGraphics.beginFill("#000", 1);
+      shadowGraphics.drawRect(0, 0, screenWitdh, screenHeight);
+
+      var loadStyle = {
+        font: "60px Arial",
+        fill: "#fff",
+        wordWrapWidth: screenWitdh,
+        align: "center",
+        boundsAlignH: "center",
+        boundsAlignV: "middle",
+        // backgroundColor: "#000"
+      };
+      progress = game.add.text(0, 0, "0%", loadStyle);
+      progress.setTextBounds(0, 0, screenWitdh, screenHeight);
+
+      var percent = 0;
+      var pToutId = setInterval(() => {
+        percent++;
+        progress.setText(percent.toString() + '%');
+        if (percent >= 100) {
+          clearInterval(pToutId);
+          shadowGraphics.destroy();
+          progress.destroy();
+        }
+      }, 10);
+      cursors = game.input.keyboard.createCursorKeys();
+      game.input.onTap.addOnce(start, this);
+    }
+    function start() {
+      dude.visible = true;
+      dude.visible = true;
+      createSprites();
+      gameOverTextGroup.alpha = 0;
+    }
+    function createSprites() {
+      timeOutId = setInterval(function () {
+        //已暂停
+        if (game.paused) {
+          clearInterval(timeOutId);
+          return;
+        }
+        sprite = game.add.sprite(game.world.randomX, 0, appleArray[game.rnd.integerInRange(0, 3)]);
+        sprites.add(sprite);
+        //自动下落
+        sprite.body.velocity.y += game.rnd.integerInRange(1, 5) * 100;
+        sprite.body.setCircle(45);
+        //验证边界
+        sprite.checkWorldBounds = true;
+        //超过边界则kill掉
+        sprite.events.onOutOfBounds.add(function (s) {
+          if (s.key === 'red' || s.key === 'green' || s.key === 'yellow') {
+            gameOver();
+          } else {
+            sprites.remove(s, true);
+          }
+        }, this);
+      }, 1000)
+    }
+
+    function update() {
+      // console.log('dube',dude)
+      if (!dude.alive) {
+        return;
+      }
+      dude.body.velocity.x = 0;
+      // if (game.input.activePointer.isDown) {
+      //   dude.body.x = game.input.activePointer.x;
+      // }
+      game.physics.arcade.collide(dude, sprites, collisionHandler, null, this);
+      if (cursors.left.isDown) {
+        // if (dude.inWorld) {
+        dude.body.velocity.x = -300;
+        // }
+      }
+      else if (cursors.right.isDown) {
+        // if (dude.inWorld) {
+        dude.body.velocity.x = 300;
+        // }
+      }
+    }
+    function collisionHandler(dube, sprite) {
+      sprite.destroy();
+      curScore = parseInt(showScore.text);
+      if (sprite.key === 'bomb') {
+        gameOver();
+      } else {
+        addscore.play();
+        var score;
+        var scoreN;
+        if (sprite.key === 'green') {
+          score = 'one';
+          scoreN = 1;
+        } else if (sprite.key === 'yellow') {
+          score = 'three';
+          scoreN = 3;
+        } else if (sprite.key === 'red') {
+          score = 'five';
+          scoreN = 5;
+        }
+        var scoreSprite = game.add.sprite(dube.body.x, dube.body.y, score);
+        scoreSprite.anchor.set(0.5, 0.5);
+        scoreSprite.scale.set(0.5);
+        game.physics.enable(scoreSprite, Phaser.Physics.ARCADE);
+        // one.body.immovable = true;
+        scoreSprite.body.velocity.y -= 200;
+        setTimeout(function () { scoreSprite.destroy() }, 100);
+        showScore.setText(curScore + scoreN);
+      }
+    }
+    function gameOver() {
+      boom.play();
+      sprites.callAll('kill');
+      dude.kill();
+      showScore.visible = false;
+      clearInterval(timeOutId);
+      game.gameResumed();
+      gameOverTextGroup = game.add.group();
+
+      var style = {
+        font: "60px Arial",
+        fill: "#ff0044",
+        wordWrapWidth: screenWitdh,
+        align: "center",
+        boundsAlignH: "center",
+        boundsAlignV: "middle"
+      };
+      gameOverText = game.add.text(0, 0, "游戏结束！", style);
+      gameOverText.setTextBounds(10, 100, screenWitdh, 100);
+      gameOverTextGroup.add(gameOverText);
+
+
+      gameOverText = game.add.text(0, 0, "本次得分：" + curScore + "分", Object.assign(style, { font: "40px Arial" }));
+      gameOverText.setTextBounds(0, 200, screenWitdh, 100);
+      gameOverTextGroup.add(gameOverText);
+
+
+      gameOverText = game.add.text(0, 0, "点击屏幕重新开始", Object.assign(style, { font: "20px Arial" }));
+      gameOverText.setTextBounds(0, 300, screenWitdh, 100);
+      gameOverTextGroup.add(gameOverText);
+
+      //the "click to restart" handler
+      game.input.onTap.addOnce(restart, this);
+    }
+    function restart() {
+      createSprites();
+      dude.revive();
+      showScore.visible = true;
+      curScore = 0;
+      showScore.setText(curScore);
+      gameOverTextGroup.alpha = 0;
+    }
+    function render() {
+      // game.add.text(0,0,""");
+      // console.log("x",game.input.activePointer.x);
+      // console.log("y",game.input.activePointer.y);
+
+    }
+  </script>
+</body>
+
+</html>
