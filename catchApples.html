@@ -160,7 +160,7 @@
         sprite = game.add.sprite(game.world.randomX, 0, appleArray[game.rnd.integerInRange(0, 3)]);
         sprites.add(sprite);
         //自动下落
-        sprite.body.velocity.y += game.rnd.integerInRange(1, 5) * 100;
+        sprite.body.velocity.y = game.rnd.between(100, 500);
         sprite.body.setCircle(45);
         //验证边界
         sprite.checkWorldBounds = true;
@@ -220,7 +220,7 @@
         scoreSprite.scale.set(0.5);
         game.physics.enable(scoreSprite, Phaser.Physics.ARCADE);
         // one.body.immovable = true;
-        scoreSprite.body.velocity.y -= 200;
+        scoreSprite.body.velocity.y = 200;
         setTimeout(function () { scoreSprite.destroy() }, 100);
         showScore.setText(curScore + scoreN);
       }
